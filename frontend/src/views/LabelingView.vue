@@ -88,7 +88,7 @@ const segmentRows = computed(() => {
     const s = m.s
     const hue = m.draft ? 43 : (merged.findIndex((x) => x.s.id === m.s.id) * 47) % 360
     const subtitle = m.draft
-      ? 'Draft — not saved'
+      ? 'Draft - not saved'
       : (() => {
           const fv = s.fieldValues ?? {}
           const vals = taxFields
@@ -645,7 +645,7 @@ onUnmounted(() => {
                   @click="selectSegmentFromList(row.id)"
                 />
               </v-list>
-              <v-alert v-else type="info" density="compact" variant="tonal">No segments yet — draw on the waveform.</v-alert>
+              <v-alert v-else type="info" density="compact" variant="tonal">No segments yet - draw on the waveform.</v-alert>
             </v-col>
             <v-col cols="12" md="6">
               <div class="text-subtitle-2 mb-2">Segment fields</div>
@@ -689,7 +689,7 @@ onUnmounted(() => {
             </v-col>
           </v-row>
           <v-sheet class="pa-3 mt-4 rounded text-caption" border>
-            <strong>Shortcut:</strong> N — next file in queue (ignored while typing in a field)
+            <strong>Shortcut:</strong> N - next file in queue (ignored while typing in a field)
           </v-sheet>
         </template>
         <v-alert v-else type="info" variant="tonal">Select or upload an audio file.</v-alert>

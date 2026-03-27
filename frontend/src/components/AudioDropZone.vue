@@ -37,7 +37,7 @@ function pick() {
       @change="onFile"
     />
     <v-icon size="48" class="mb-2">mdi-cloud-upload</v-icon>
-    <div class="text-body-1">Drop MP3, WAV, or ZIP here — or click to choose files</div>
+    <div class="text-body-1">Drop MP3, WAV, or ZIP here - or click to choose files</div>
     <div class="text-caption text-medium-emphasis mt-1">ZIP: flattened WAV paths; loose files: MP3 + WAV</div>
   </div>
 </template>

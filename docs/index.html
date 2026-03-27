@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Audio tagger — documentation</title>
+    <title>Audio tagger - documentation</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -20,6 +20,112 @@
       <div class="doc-hero">
         <p class="tagline">Vue + Vuetify frontend · Go API · SQLite storage</p>
       </div>
+
+      <nav class="doc-toc" aria-labelledby="toc-heading">
+        <p id="toc-heading" class="doc-toc-title">On this page</p>
+        <ol class="doc-toc-list">
+          <li><a href="#distribution">Standalone builds</a></li>
+          <li>
+            <a href="#get-started">Get started</a>
+            <ol class="doc-toc-sub">
+              <li><a href="#get-started-prereqs">Prerequisites</a></li>
+              <li><a href="#get-started-migrate">Apply migrations</a></li>
+              <li><a href="#get-started-run">Run backend &amp; frontend</a></li>
+              <li><a href="#get-started-open">Open the app</a></li>
+            </ol>
+          </li>
+          <li><a href="#overview">Overview</a></li>
+          <li><a href="#label-focus">Label focus mode</a></li>
+          <li><a href="#projects">Projects &amp; collections</a></li>
+          <li><a href="#labeling">Labeling</a></li>
+          <li>
+            <a href="#datasets">Datasets</a>
+            <ol class="doc-toc-sub">
+              <li><a href="#datasets-list">Browse project datasets</a></li>
+              <li><a href="#datasets-create">Create an export</a></li>
+              <li><a href="#datasets-detail">Inspect an export</a></li>
+            </ol>
+          </li>
+        </ol>
+      </nav>
+
+      <section id="distribution" class="doc-standalone-note" aria-label="Standalone builds and expectations">
+        <h2>Standalone builds</h2>
+        <p>
+          Right now you run the app from a developer checkout: clone the repo, run migrations yourself, keep Go and Yarn
+          installed, and juggle two terminals for the API and the Vite dev server. That is not a polished or ideal
+          experience - it is fine for contributors and people who are comfortable with those tools, but it is not where
+          we want to stop.
+        </p>
+        <p>
+          If this project proves useful and there is interest, we expect to improve how you run it: for example prebuilt
+          binaries, a packaged desktop app, a single container image, or an installer that does not assume a full dev
+          toolchain. There is no timeline or guarantee; this note only sets expectations that the current setup is
+          acknowledged as rough and that better packaging is a likely direction when it is worth doing.
+        </p>
+      </section>
+
+      <section id="get-started">
+        <h2>Get started</h2>
+        <p class="get-started-lead">
+          From a clean clone you can have the UI talking to the API in a few minutes: install toolchains, migrate the
+          database once, run two processes, then open the dev server in your browser.
+        </p>
+
+        <h3 id="get-started-prereqs">Prerequisites</h3>
+        <ul>
+          <li><strong>Go</strong> 1.22+ (see <code>backend/go.mod</code>)</li>
+          <li><strong>Node.js</strong> 20+ (LTS recommended) and <strong>Yarn</strong> 1.x - the frontend uses Yarn, not npm</li>
+          <li><strong>Git</strong> to clone the repository</li>
+        </ul>
+        <p>
+          Clone the repo and work from the project root (paths below assume that). Example:
+          <code>git clone https://github.com/birdhalfbaked/aml-toolkit.git</code> then <code>cd aml-toolkit</code>.
+        </p>
+
+        <h3 id="get-started-migrate">Apply migrations (once per machine or after pulling schema changes)</h3>
+        <p>
+          The API does <strong>not</strong> run migrations on startup. From the repo root:
+        </p>
+        <pre class="code-block"><code>cd backend &amp;&amp; go run ./cmd/migrate</code></pre>
+        <p>
+          By default the SQLite file is <code>backend/data/app.db</code> when you run commands from <code>backend/</code>
+          (or set <code>AUDIO_TAGGER_DATA</code> / <code>AUDIO_TAGGER_DB</code> to control location - same vars as the
+          server). Override the file explicitly with <code>go run ./cmd/migrate -db /path/to/app.db</code>.
+        </p>
+
+        <h3 id="get-started-run">Run backend &amp; frontend</h3>
+        <p>Use <strong>two terminals</strong> from the repo root.</p>
+        <p><strong>Terminal 1 - API</strong> (listens on <strong>port 8080</strong> by default; set <code>PORT</code> to change):</p>
+        <pre class="code-block"><code>cd backend
+go run .</code></pre>
+        <p>
+          <strong>Terminal 2 - Vite dev server</strong> (serves the SPA at <strong>port 5173</strong> and proxies
+          <code>/api</code> to <code>http://127.0.0.1:8080</code> - see <code>frontend/vite.config.ts</code>):
+        </p>
+        <pre class="code-block"><code>cd frontend
+yarn
+yarn dev</code></pre>
+        <p>
+          First time only, <code>yarn</code> installs dependencies; afterwards <code>yarn dev</code> is enough.
+        </p>
+
+        <h3 id="get-started-open">Open the app</h3>
+        <p>
+          In your browser go to <strong><a href="http://localhost:5173/">http://localhost:5173/</a></strong>. You should
+          see the projects screen; create a <strong>project</strong>, add a <strong>collection</strong>, upload audio, and
+          open the collection for <strong>labeling</strong>.
+        </p>
+        <p>
+          If API calls fail, confirm the backend is running on 8080 (or align <code>PORT</code> and the Vite proxy). For a
+          non-default API URL you can set <code>VITE_API_BASE</code> when building or running the frontend.
+        </p>
+        <p>
+          Optional: if you build the frontend to <code>frontend/dist</code>, the Go server can serve it when
+          <code>AUDIO_TAGGER_FRONTEND_DIR</code> points at that directory (defaults to <code>../frontend/dist</code> relative
+          to <code>backend</code>) - useful for a single-process demo without Vite.
+        </p>
+      </section>
 
       <section id="overview">
         <h2>Overview</h2>
@@ -108,8 +214,8 @@
 
         <h3 id="datasets-create">Create an export</h3>
         <p>
-          The <strong>Save as dataset</strong> flow names the export, sets splits, and configures generation —
-          including <strong>augmentation</strong> and related options — before the build runs.
+          The <strong>Save as dataset</strong> flow names the export, sets splits, and configures generation -
+          including <strong>augmentation</strong> and related options - before the build runs.
         </p>
         <figure class="figure">
           <img
@@ -133,34 +239,6 @@
             alt="Dataset detail page"
           />
         </figure>
-      </section>
-
-      <section id="run-local">
-        <h2>Run locally</h2>
-        <h3>Frontend</h3>
-        <pre class="code-block"><code>cd frontend
-yarn
-yarn dev</code></pre>
-        <h3>Backend</h3>
-        <pre class="code-block"><code>cd backend
-go run .</code></pre>
-        <p>
-          Migrations are a separate command (not run by the server on startup). After deploys or schema changes, run once:
-        </p>
-        <pre class="code-block"><code>cd backend &amp;&amp; go run ./cmd/migrate</code></pre>
-        <p>
-          Uses <code>AUDIO_TAGGER_DATA</code> and <code>AUDIO_TAGGER_DB</code> like the API, or <code>go run ./cmd/migrate -db /path/to/app.db</code>.
-        </p>
-      </section>
-
-      <section id="distribution">
-        <h2>Standalone builds</h2>
-        <p>
-          Right now, running the stack means using a checkout with the usual dev tools (Yarn for the frontend, Go for the
-          backend and migrations). If the project proves useful enough, a <strong>proper release build</strong> that does
-          not require those toolchains — for example prebuilt binaries, a packaged desktop app, or a single container
-          image — will probably follow. There is no timeline; this is only a note of intent.
-        </p>
       </section>
     </main>
   </body>

@@ -97,7 +97,7 @@ onMounted(load)
         </template>
       </v-list-item>
     </v-list>
-    <v-alert v-else-if="!loading" type="info" variant="tonal">No collections — add one to upload audio.</v-alert>
+    <v-alert v-else-if="!loading" type="info" variant="tonal">No collections - add one to upload audio.</v-alert>
 
     <CollectionSchemaDialog v-model="schemaOpen" :collection="schemaCollection" @saved="load" />
   </div>

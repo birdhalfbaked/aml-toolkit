@@ -20,6 +20,6 @@ Open `index.html` in a browser, or run a static server from the repo root:
 npx --yes serve docs -p 8080
 ```
 
-The main narrative is **`index.html`**. Screenshots live under **`images/`** and are referenced from there.
+The main narrative is **`index.html`**, starting with **Get started** (prerequisites, migrate, run backend + Vite, open the app). Screenshots live under **`images/`**.
 
-The **Standalone builds** section in `index.html` notes that a no–dev-tools release may follow if the project proves worth shipping that way.
+Right after the **table of contents**, **Standalone builds** sets expectations: the current dev-style setup is rough; easier packaging may follow if there is interest (no timeline promised).

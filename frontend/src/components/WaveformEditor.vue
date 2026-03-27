@@ -379,7 +379,7 @@ async function mountWs() {
   })
 
   reg.on('region-created', (region) => {
-    // addRegion() during sync also emits region-created — do not remove or POST those.
+    // addRegion() during sync also emits region-created - do not remove or POST those.
     if (isProgrammaticSegmentRegion(region)) {
       return
     }

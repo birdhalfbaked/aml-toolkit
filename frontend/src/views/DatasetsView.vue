@@ -43,6 +43,6 @@ watch(projectId, () => {
         @click="router.push({ name: 'dataset', params: { projectId: String(projectId), datasetId: String(d.id) } })"
       />
     </v-list>
-    <v-alert v-else type="info" variant="tonal">No datasets yet — use “Save as dataset” from a collection.</v-alert>
+    <v-alert v-else type="info" variant="tonal">No datasets yet - use “Save as dataset” from a collection.</v-alert>
   </div>
 </template>

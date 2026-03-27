@@ -69,8 +69,77 @@ body {
   color: #4a5568;
 }
 
+.doc-standalone-note {
+  background: linear-gradient(135deg, rgba(43, 58, 103, 0.06) 0%, rgba(74, 95, 158, 0.08) 100%);
+  border: 1px solid rgba(43, 58, 103, 0.22);
+  border-radius: 10px;
+  padding: 1.15rem 1.35rem 1.25rem;
+  margin-bottom: 2rem;
+  scroll-margin-top: 1rem;
+}
+
+.doc-standalone-note h2 {
+  margin: 0 0 0.65rem;
+  font-size: 1.2rem;
+  color: #252b3d;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.doc-standalone-note p {
+  margin: 0 0 0.75rem;
+  max-width: none;
+}
+
+.doc-standalone-note p:last-child {
+  margin-bottom: 0;
+}
+
+.doc-toc {
+  background: #fff;
+  border: 1px solid #d5dbe8;
+  border-radius: 10px;
+  padding: 1rem 1.25rem 1.15rem;
+  margin-bottom: 2.25rem;
+  box-shadow: 0 4px 18px rgba(30, 40, 80, 0.06);
+}
+
+.doc-toc-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #3d4a63;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-toc-list,
+.doc-toc-sub {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.doc-toc-list {
+  list-style: decimal;
+}
+
+.doc-toc-sub {
+  margin-top: 0.35rem;
+  list-style: lower-alpha;
+}
+
+.doc-toc a {
+  color: #2d4a9e;
+  text-decoration: none;
+}
+
+.doc-toc a:hover {
+  text-decoration: underline;
+}
+
 section {
   margin-bottom: 2.5rem;
+  scroll-margin-top: 1rem;
 }
 
 section h2 {
@@ -85,6 +154,22 @@ section h3 {
   margin: 1.25rem 0 0.5rem;
   font-size: 1.1rem;
   color: #2c3348;
+}
+
+section ul {
+  margin: 0.5rem 0 1rem;
+  padding-left: 1.35rem;
+  max-width: 48rem;
+}
+
+section ul li {
+  margin-bottom: 0.35rem;
+}
+
+.get-started-lead {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  color: #3d4556;
 }
 
 /* First subsection after an intro paragraph (e.g. Datasets) */

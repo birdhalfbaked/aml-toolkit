@@ -165,7 +165,7 @@ const filtered = computed(() => {
           <div class="text-subtitle-2 text-medium-emphasis">Label</div>
           <div class="text-h6 mb-2" :class="{ 'text-primary': playing }">{{ selected.label }}</div>
           <div class="text-subtitle-2 text-medium-emphasis">Transcription</div>
-          <div class="text-body-1" :class="{ 'text-primary': playing }">{{ selected.transcription || '—' }}</div>
+          <div class="text-body-1" :class="{ 'text-primary': playing }">{{ selected.transcription || '-' }}</div>
           <div v-if="augmentationSteps" class="mt-3">
             <div class="text-subtitle-2 text-medium-emphasis mb-1">Augmentation</div>
             <div v-for="(st, i) in augmentationSteps" :key="i" class="text-caption">

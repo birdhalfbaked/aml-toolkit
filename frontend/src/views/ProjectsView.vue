@@ -60,6 +60,6 @@ onMounted(load)
         @click="router.push({ name: 'project', params: { projectId: String(p.id) } })"
       />
     </v-list>
-    <v-alert v-else-if="!loading" type="info" variant="tonal">No projects yet — create one above.</v-alert>
+    <v-alert v-else-if="!loading" type="info" variant="tonal">No projects yet - create one above.</v-alert>
   </div>
 </template>
