@@ -10,7 +10,7 @@ In the repository **Settings → Pages**:
 - **Branch**: `main` (or your default branch)
 - **Folder**: `/docs`
 
-The site will be available at `https://<user>.github.io/<repo>/`.
+When published from this repo, the site is **[https://birdhalfbaked.github.io/aml-toolkit/](https://birdhalfbaked.github.io/aml-toolkit/)** (path matches the repository name).
 
 ## Local preview
 

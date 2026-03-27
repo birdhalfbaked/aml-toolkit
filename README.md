@@ -1,5 +1,7 @@
 This project is to help me tag audio.
 
+**Documentation (GitHub Pages):** [https://birdhalfbaked.github.io/aml-toolkit/](https://birdhalfbaked.github.io/aml-toolkit/) — feature overview, screenshots, and how to run locally.
+
 it has several key features that I need on a project bases (you create projects):
 
 1. Place to just dump audio files 
