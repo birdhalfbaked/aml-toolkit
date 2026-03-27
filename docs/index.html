@@ -3,16 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Audio tagger - documentation</title>
+    <title>Audio ML Toolkit - documentation</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="page-header">
-      <h1>Audio tagger</h1>
+      <h1>Audio ML Toolkit</h1>
       <p class="lead">
-        Organize audio into <strong>projects</strong> and <strong>collections</strong>, draw <strong>segments</strong> on
-        waveforms, and attach <strong>labels</strong> (and other fields) per your schema. Export
-        <strong>datasets</strong> for training or handoff.
+        A UI for building datasets and labeling audio faster: projects, collections,
+        waveform segments, and fields from your schema, plus dataset exports. The aim
+        over time is to support training and evaluation workflows (especially classification and ASR) and to grow beyond
+        a browser-only tool.
       </p>
     </header>
 
@@ -74,9 +75,9 @@
 
         <h3 id="get-started-prereqs">Prerequisites</h3>
         <ul>
-          <li><strong>Go</strong> 1.22+ (see <code>backend/go.mod</code>)</li>
-          <li><strong>Node.js</strong> 20+ (LTS recommended) and <strong>Yarn</strong> 1.x - the frontend uses Yarn, not npm</li>
-          <li><strong>Git</strong> to clone the repository</li>
+          <li>Go 1.22+ (see <code>backend/go.mod</code>)</li>
+          <li>Node.js 20+ (LTS recommended) and Yarn 1.x - the frontend uses Yarn, not npm</li>
+          <li>Git to clone the repository</li>
         </ul>
         <p>
           Clone the repo and work from the project root (paths below assume that). Example:
@@ -85,7 +86,7 @@
 
         <h3 id="get-started-migrate">Apply migrations (once per machine or after pulling schema changes)</h3>
         <p>
-          The API does <strong>not</strong> run migrations on startup. From the repo root:
+          The API does not run migrations on startup. From the repo root:
         </p>
         <pre class="code-block"><code>cd backend &amp;&amp; go run ./cmd/migrate</code></pre>
         <p>
@@ -95,12 +96,12 @@
         </p>
 
         <h3 id="get-started-run">Run backend &amp; frontend</h3>
-        <p>Use <strong>two terminals</strong> from the repo root.</p>
-        <p><strong>Terminal 1 - API</strong> (listens on <strong>port 8080</strong> by default; set <code>PORT</code> to change):</p>
+        <p>Use two terminals from the repo root.</p>
+        <p>Terminal 1 - API (listens on port 8080 by default; set <code>PORT</code> to change):</p>
         <pre class="code-block"><code>cd backend
 go run .</code></pre>
         <p>
-          <strong>Terminal 2 - Vite dev server</strong> (serves the SPA at <strong>port 5173</strong> and proxies
+          Terminal 2 - Vite dev server (serves the SPA at port 5173 and proxies
           <code>/api</code> to <code>http://127.0.0.1:8080</code> - see <code>frontend/vite.config.ts</code>):
         </p>
         <pre class="code-block"><code>cd frontend
@@ -112,9 +113,9 @@ yarn dev</code></pre>
 
         <h3 id="get-started-open">Open the app</h3>
         <p>
-          In your browser go to <strong><a href="http://localhost:5173/">http://localhost:5173/</a></strong>. You should
-          see the projects screen; create a <strong>project</strong>, add a <strong>collection</strong>, upload audio, and
-          open the collection for <strong>labeling</strong>.
+          In your browser go to <a href="http://localhost:5173/">http://localhost:5173/</a>. You should
+          see the projects screen; create a project, add a collection, upload audio, and
+          open the collection for labeling.
         </p>
         <p>
           If API calls fail, confirm the backend is running on 8080 (or align <code>PORT</code> and the Vite proxy). For a
@@ -130,9 +131,9 @@ yarn dev</code></pre>
       <section id="overview">
         <h2>Overview</h2>
         <p>
-          A project holds <strong>collections</strong> (folders of audio). You upload <strong>MP3/WAV</strong> files or
-          <strong>ZIP</strong> archives; zips are flattened so nested paths become part of the filename. Open a
-          collection to use the <strong>labeling</strong> view: waveform, segments, and configurable fields (taxonomy,
+          A project holds collections (folders of audio). You upload MP3/WAV files or
+          ZIP archives; zips are flattened so nested paths become part of the filename. Open a
+          collection to use the labeling view: waveform, segments, and configurable fields (taxonomy,
           transcription, etc.).
         </p>
       </section>
@@ -140,9 +141,9 @@ yarn dev</code></pre>
       <section id="label-focus">
         <h2>Label focus mode</h2>
         <p>
-          On the labeling page, use <strong>Label focus</strong> for a wide layout: the upload/file list is hidden so the
-          waveform and segment editor get full width. Use <strong>Exit focus</strong> when you need the file list or drop
-          zone. In focus mode, the <strong>Next file</strong> strip (and the <kbd>N</kbd> shortcut) moves you through the
+          On the labeling page, use Label focus for a wide layout: the upload/file list is hidden so the
+          waveform and segment editor get full width. Use Exit focus when you need the file list or drop
+          zone. In focus mode, the Next file strip (and the <kbd>N</kbd> shortcut) moves you through the
           labeling queue.
         </p>
         <figure class="figure">
@@ -158,8 +159,8 @@ yarn dev</code></pre>
       <section id="projects">
         <h2>Projects &amp; collections</h2>
         <p>
-          Start from the <strong>Projects</strong> list, open a project, then pick a <strong>collection</strong> to label.
-          Collection <strong>schema</strong> (fields / schema) defines required segment- and file-level fields.
+          Start from the Projects list, open a project, then pick a collection to label.
+          Collection schema (fields / schema) defines required segment- and file-level fields.
         </p>
         <figure class="figure">
           <img src="images/02-projects.png" width="1200" height="675" alt="Projects list" />
@@ -172,8 +173,8 @@ yarn dev</code></pre>
       <section id="labeling">
         <h2>Labeling</h2>
         <p>
-          Drag on the waveform to mark a <strong>tentative</strong> region; it is only stored in the browser until you
-          click <strong>Save segment</strong>. Draw again or switch files to discard a draft. Adjust region edges on the
+          Drag on the waveform to mark a tentative region; it is only stored in the browser until you
+          click Save segment. Draw again or switch files to discard a draft. Adjust region edges on the
           waveform; saved segments update the server when you finish dragging.
         </p>
         <figure class="figure">
@@ -198,9 +199,9 @@ yarn dev</code></pre>
       <section id="datasets">
         <h2>Datasets</h2>
         <p>
-          A <strong>dataset</strong> is a built export from labeled audio (splits, filenames, optional augmentation,
-          etc.). You start a build from labeling via <strong>Save as dataset</strong>, then manage and inspect exports
-          from the project <strong>Datasets</strong> area.
+          A dataset is a built export from labeled audio (splits, filenames, optional augmentation,
+          etc.). You start a build from labeling via Save as dataset, then manage and inspect exports
+          from the project Datasets area.
         </p>
 
         <h3 id="datasets-list">Browse project datasets</h3>
@@ -214,8 +215,8 @@ yarn dev</code></pre>
 
         <h3 id="datasets-create">Create an export</h3>
         <p>
-          The <strong>Save as dataset</strong> flow names the export, sets splits, and configures generation -
-          including <strong>augmentation</strong> and related options - before the build runs.
+          The Save as dataset flow names the export, sets splits, and configures generation -
+          including augmentation and related options - before the build runs.
         </p>
         <figure class="figure">
           <img
@@ -228,7 +229,7 @@ yarn dev</code></pre>
 
         <h3 id="datasets-detail">Inspect an export</h3>
         <p>
-          The dataset detail view shows <strong>status</strong>, output <strong>paths</strong>, and other metadata for a
+          The dataset detail view shows status, output paths, and other metadata for a
           single build.
         </p>
         <figure class="figure">
