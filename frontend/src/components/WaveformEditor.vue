@@ -264,7 +264,7 @@ function syncRegionsFromProps() {
   }
 }
 
-/** Ignore region-created for regions we added via addRegion (same id as server segment or draft). */
+/** Ignore region-created for regions added via addRegion (same id as server segment or draft). */
 function isProgrammaticSegmentRegion(region: { id: string }): boolean {
   if (String(region.id) === String(DRAFT_SEGMENT_ID)) return true
   return props.segments.some((s) => String(s.id) === String(region.id))
