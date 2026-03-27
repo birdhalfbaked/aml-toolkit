@@ -1,0 +1,148 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  line-height: 1.55;
+  color: #1a1d26;
+  background: #f6f7fa;
+}
+
+.page-header {
+  background: linear-gradient(135deg, #2b3a67 0%, #4a5f9e 100%);
+  color: #f0f2fa;
+  padding: 1.75rem 1.5rem 2rem;
+}
+
+.page-header h1 {
+  margin: 0.75rem 0 0.5rem;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.page-header .lead {
+  margin: 0;
+  max-width: 52rem;
+  opacity: 0.95;
+  font-size: 1.05rem;
+}
+
+.back {
+  color: #c8d4ff;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.container {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+.doc-hero {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.doc-hero h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.75rem, 4.5vw, 2.25rem);
+  color: #1e2640;
+}
+
+.doc-hero .tagline {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #4a5568;
+}
+
+section {
+  margin-bottom: 2.5rem;
+}
+
+section h2 {
+  margin: 0 0 1rem;
+  font-size: 1.35rem;
+  color: #252b3d;
+  border-bottom: 2px solid #dce2f0;
+  padding-bottom: 0.35rem;
+}
+
+section h3 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1.1rem;
+  color: #2c3348;
+}
+
+/* First subsection after an intro paragraph (e.g. Datasets) */
+section > p + h3 {
+  margin-top: 1.75rem;
+  padding-top: 0.25rem;
+}
+
+p,
+li {
+  max-width: 48rem;
+}
+
+pre,
+.code-block {
+  background: #1e2433;
+  color: #e8ecf7;
+  padding: 1rem 1.1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+kbd {
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.88em;
+  background: #e8ecf5;
+  border: 1px solid #c5ccdc;
+  padding: 0.1em 0.45em;
+  border-radius: 4px;
+  box-shadow: 0 1px 0 #fff inset;
+}
+
+code {
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.9em;
+  background: #e8ecf5;
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.figure {
+  margin: 1rem 0 0;
+}
+
+.figure img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 10px;
+  border: 1px solid #d5dbe8;
+  box-shadow: 0 8px 28px rgba(30, 40, 80, 0.08);
+}
+

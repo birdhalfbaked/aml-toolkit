@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Audio tagger — documentation</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <h1>Audio tagger</h1>
+      <p class="lead">
+        Organize audio into <strong>projects</strong> and <strong>collections</strong>, draw <strong>segments</strong> on
+        waveforms, and attach <strong>labels</strong> (and other fields) per your schema. Export
+        <strong>datasets</strong> for training or handoff.
+      </p>
+    </header>
+
+    <main class="container">
+      <div class="doc-hero">
+        <p class="tagline">Vue + Vuetify frontend · Go API · SQLite storage</p>
+      </div>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <p>
+          A project holds <strong>collections</strong> (folders of audio). You upload <strong>MP3/WAV</strong> files or
+          <strong>ZIP</strong> archives; zips are flattened so nested paths become part of the filename. Open a
+          collection to use the <strong>labeling</strong> view: waveform, segments, and configurable fields (taxonomy,
+          transcription, etc.).
+        </p>
+      </section>
+
+      <section id="label-focus">
+        <h2>Label focus mode</h2>
+        <p>
+          On the labeling page, use <strong>Label focus</strong> for a wide layout: the upload/file list is hidden so the
+          waveform and segment editor get full width. Use <strong>Exit focus</strong> when you need the file list or drop
+          zone. In focus mode, the <strong>Next file</strong> strip (and the <kbd>N</kbd> shortcut) moves you through the
+          labeling queue.
+        </p>
+        <figure class="figure">
+          <img
+            src="images/01-label-focus-hero.png"
+            width="1200"
+            height="360"
+            alt="Label focus hero button under breadcrumbs"
+          />
+        </figure>
+      </section>
+
+      <section id="projects">
+        <h2>Projects &amp; collections</h2>
+        <p>
+          Start from the <strong>Projects</strong> list, open a project, then pick a <strong>collection</strong> to label.
+          Collection <strong>schema</strong> (fields / schema) defines required segment- and file-level fields.
+        </p>
+        <figure class="figure">
+          <img src="images/02-projects.png" width="1200" height="675" alt="Projects list" />
+        </figure>
+        <figure class="figure">
+          <img src="images/03-project-home.png" width="1200" height="675" alt="Project home with collections" />
+        </figure>
+      </section>
+
+      <section id="labeling">
+        <h2>Labeling</h2>
+        <p>
+          Drag on the waveform to mark a <strong>tentative</strong> region; it is only stored in the browser until you
+          click <strong>Save segment</strong>. Draw again or switch files to discard a draft. Adjust region edges on the
+          waveform; saved segments update the server when you finish dragging.
+        </p>
+        <figure class="figure">
+          <img src="images/04-labeling-layout.png" width="1200" height="675" alt="Labeling with file list visible" />
+        </figure>
+        <figure class="figure">
+          <img
+            src="images/05-labeling-focus-mode.png"
+            width="1200"
+            height="675"
+            alt="Labeling in focus mode"
+          />
+        </figure>
+        <figure class="figure">
+          <img src="images/06-waveform-segments.png" width="1200" height="520" alt="Waveform and segment regions" />
+        </figure>
+        <figure class="figure">
+          <img src="images/07-segment-fields.png" width="1200" height="560" alt="Segment fields form" />
+        </figure>
+      </section>
+
+      <section id="datasets">
+        <h2>Datasets</h2>
+        <p>
+          A <strong>dataset</strong> is a built export from labeled audio (splits, filenames, optional augmentation,
+          etc.). You start a build from labeling via <strong>Save as dataset</strong>, then manage and inspect exports
+          from the project <strong>Datasets</strong> area.
+        </p>
+
+        <h3 id="datasets-list">Browse project datasets</h3>
+        <p>
+          The datasets list shows exports for the project; open one to see details or use actions from here as your app
+          provides them.
+        </p>
+        <figure class="figure">
+          <img src="images/08-datasets.png" width="1200" height="675" alt="Datasets list for a project" />
+        </figure>
+
+        <h3 id="datasets-create">Create an export</h3>
+        <p>
+          The <strong>Save as dataset</strong> flow names the export, sets splits, and configures generation —
+          including <strong>augmentation</strong> and related options — before the build runs.
+        </p>
+        <figure class="figure">
+          <img
+            src="images/09-dataset-creation.png"
+            width="1200"
+            height="675"
+            alt="Save as dataset dialog with augmentation options"
+          />
+        </figure>
+
+        <h3 id="datasets-detail">Inspect an export</h3>
+        <p>
+          The dataset detail view shows <strong>status</strong>, output <strong>paths</strong>, and other metadata for a
+          single build.
+        </p>
+        <figure class="figure">
+          <img
+            src="images/10-dataset-details.png"
+            width="1200"
+            height="675"
+            alt="Dataset detail page"
+          />
+        </figure>
+      </section>
+
+      <section id="run-local">
+        <h2>Run locally</h2>
+        <h3>Frontend</h3>
+        <pre class="code-block"><code>cd frontend
+yarn
+yarn dev</code></pre>
+        <h3>Backend</h3>
+        <pre class="code-block"><code>cd backend
+go run .</code></pre>
+        <p>
+          Migrations are a separate command (not run by the server on startup). After deploys or schema changes, run once:
+        </p>
+        <pre class="code-block"><code>cd backend &amp;&amp; go run ./cmd/migrate</code></pre>
+        <p>
+          Uses <code>AUDIO_TAGGER_DATA</code> and <code>AUDIO_TAGGER_DB</code> like the API, or <code>go run ./cmd/migrate -db /path/to/app.db</code>.
+        </p>
+      </section>
+
+      <section id="distribution">
+        <h2>Standalone builds</h2>
+        <p>
+          Right now, running the stack means using a checkout with the usual dev tools (Yarn for the frontend, Go for the
+          backend and migrations). If the project proves useful enough, a <strong>proper release build</strong> that does
+          not require those toolchains — for example prebuilt binaries, a packaged desktop app, or a single container
+          image — will probably follow. There is no timeline; this is only a note of intent.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
