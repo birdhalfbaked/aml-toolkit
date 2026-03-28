@@ -86,4 +86,31 @@ jobs:
           name: audio-tagger-desktop-${{ matrix.artifact }}
           path: backend/cmd/wails/build/bin/*
           if-no-files-found: error
-          archive: false
+
+  # One zip containing every platform folder (artifact downloads are unpacked; this re-archives them together).
+  bundle-all:
+    name: All platforms (single zip)
+    needs: wails
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: platforms
+          pattern: audio-tagger-desktop-*
+          merge-multiple: false
+
+      - name: Create combined archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="audio-tagger-desktop-all-${{ github.run_id }}.zip"
+          (cd platforms && zip -r9 "$GITHUB_WORKSPACE/$out" .)
+          echo "BUNDLE_NAME=$out" >> "$GITHUB_ENV"
+          ls -la "$GITHUB_WORKSPACE/$out"
+
+      - name: Upload combined zip
+        uses: actions/upload-artifact@v7
+        with:
+          name: audio-tagger-desktop-all-platforms
+          path: ${{ env.BUNDLE_NAME }}
+          if-no-files-found: error
