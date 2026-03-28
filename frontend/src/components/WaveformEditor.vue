@@ -1,5 +1,13 @@
 <script setup lang="ts">
 import * as audioApi from '@/api/audio'
+import {
+  canUseDesktopNativeAudio,
+  desktopNativePlay,
+  desktopNativeSeekMs,
+  desktopNativeStop,
+  desktopReadAudioBlob,
+  subscribeDesktopAudioPosition,
+} from '@/lib/desktopWails'
 import { DRAFT_SEGMENT_ID, type Segment } from '@/types'
 import { onUnmounted, ref, shallowRef, watch } from 'vue'
 import WaveSurfer from 'wavesurfer.js'
@@ -8,6 +16,8 @@ import RegionsPlugin from 'wavesurfer.js/plugins/regions'
 
 const props = defineProps<{
   audioUrl: string
+  /** When set with Wails, audible segment playback uses Go/beep only; WaveSurfer decodes for the waveform and playhead. */
+  nativeDesktopFileId?: number | null
   segments: Segment[]
   /** Unsaved region (frontend-only until Save segment). */
   draftSegment: { startMs: number; endMs: number } | null
@@ -33,8 +43,14 @@ let unsubTime: (() => void) | null = null
 /** Unsubscribers for per-region update-end listeners */
 const regionUnsubs: Array<() => void> = []
 let wheelListener: ((e: WheelEvent) => void) | null = null
+let offDesktopAudioPos: (() => void) | null = null
 let manualZoomForFile = false
 let rafRuler: number | null = null
+/** Object URL from [desktopReadAudioBlob]; revoked in [destroyWs]. */
+let desktopWaveObjectUrl: string | null = null
+let mountGeneration = 0
+/** True while Go/beep is driving audible segment preview (playhead must follow events even if WS is muted). */
+let nativeSegmentPreviewActive = false
 
 const rangeLoop = ref(false)
 const rangeStartSec = ref<number | null>(null)
@@ -277,6 +293,16 @@ const CREATE_DEBOUNCE_MS = 350
 // No minimum segment duration; avoid accidental clicks via drag threshold instead.
 const DRAG_SELECT_THRESHOLD_PX = 10
 
+function useNativeDesktopAudio(): boolean {
+  const id = props.nativeDesktopFileId
+  return id != null && id > 0 && canUseDesktopNativeAudio()
+}
+
+function teardownDesktopAudioPos() {
+  offDesktopAudioPos?.()
+  offDesktopAudioPos = null
+}
+
 function scheduleDraftChange(startMs: number, endMs: number) {
   pendingCreate = { startMs, endMs }
   if (createDebounceTimer) clearTimeout(createDebounceTimer)
@@ -292,13 +318,36 @@ function scheduleDraftChange(startMs: number, endMs: number) {
 async function mountWs() {
   if (!container.value) return
   destroyWs()
+  const gen = ++mountGeneration
+  teardownDesktopAudioPos()
+
+  let waveUrl = props.audioUrl
+  if (useNativeDesktopAudio() && props.nativeDesktopFileId != null) {
+    try {
+      const blob = await desktopReadAudioBlob(props.nativeDesktopFileId)
+      if (gen !== mountGeneration) return
+      const url = URL.createObjectURL(blob)
+      if (gen !== mountGeneration) {
+        URL.revokeObjectURL(url)
+        return
+      }
+      desktopWaveObjectUrl = url
+      waveUrl = url
+    } catch (e) {
+      console.error(e)
+      return
+    }
+  }
+
+  if (gen !== mountGeneration || !container.value) return
+
   const reg = RegionsPlugin.create()
   const w = WaveSurfer.create({
     container: container.value,
     height: WAVE_H,
     waveColor: '#5c7cfa',
     progressColor: '#364fc7',
-    url: props.audioUrl,
+    url: waveUrl,
     minPxPerSec: pxPerSec.value,
     // Required for zoom to create a scrollable waveform.
     fillParent: false,
@@ -371,6 +420,35 @@ async function mountWs() {
       w.setScrollTime(newScrollStart)
     }
     el.addEventListener('wheel', wheelListener, { passive: false })
+
+    if (useNativeDesktopAudio()) {
+      offDesktopAudioPos = subscribeDesktopAudioPosition((ms) => {
+        const wave = ws.value
+        if (!wave) return
+        if (!nativeSegmentPreviewActive && !wave.isPlaying()) return
+        const dur = wave.getDuration()
+        if (!dur || dur <= 0) return
+        wave.setTime(ms / 1000)
+
+        if (
+          nativeSegmentPreviewActive &&
+          rangeStartSec.value != null &&
+          rangeEndSec.value != null
+        ) {
+          const endMs = rangeEndSec.value * 1000
+          if (ms >= endMs - 25) {
+            if (rangeLoop.value) {
+              void desktopNativeSeekMs(rangeStartSec.value * 1000)
+              wave.setTime(rangeStartSec.value)
+            } else {
+              nativeSegmentPreviewActive = false
+              void desktopNativeStop()
+              wave.setTime(rangeEndSec.value)
+            }
+          }
+        }
+      })
+    }
   })
 
   reg.on('region-clicked', (region) => {
@@ -391,6 +469,11 @@ async function mountWs() {
 }
 
 function destroyWs() {
+  nativeSegmentPreviewActive = false
+  if (desktopWaveObjectUrl) {
+    URL.revokeObjectURL(desktopWaveObjectUrl)
+    desktopWaveObjectUrl = null
+  }
   if (disableDragSelect) {
     disableDragSelect()
     disableDragSelect = null
@@ -418,6 +501,7 @@ function destroyWs() {
     cancelAnimationFrame(rafRuler)
     rafRuler = null
   }
+  teardownDesktopAudioPos()
   ws.value?.destroy()
   ws.value = null
   regions.value = null
@@ -431,6 +515,23 @@ async function playSegmentRange(startMs: number, endMs: number, loop: boolean) {
   rangeLoop.value = loop
   rangeStartSec.value = st
   rangeEndSec.value = en
+  const nativeDesktop =
+    useNativeDesktopAudio() && props.nativeDesktopFileId != null
+
+  if (nativeDesktop) {
+    try {
+      await desktopNativePlay(props.nativeDesktopFileId, startMs)
+      nativeSegmentPreviewActive = true
+      w.setTime(st)
+      // Sound comes only from Go/beep; do not run WaveSurfer.play (Web Audio).
+      return
+    } catch (e) {
+      console.error(e)
+      nativeSegmentPreviewActive = false
+    }
+  }
+
+  w.setVolume(1)
   if (loop) {
     await w.play(st)
   } else {
@@ -439,10 +540,16 @@ async function playSegmentRange(startMs: number, endMs: number, loop: boolean) {
 }
 
 function stopSegmentPreview() {
+  nativeSegmentPreviewActive = false
   rangeLoop.value = false
   rangeStartSec.value = null
   rangeEndSec.value = null
-  ws.value?.pause()
+  if (useNativeDesktopAudio()) {
+    void desktopNativeStop()
+  }
+  const w = ws.value
+  w?.setVolume(1)
+  w?.pause()
 }
 
 function setZoom(newPxPerSec: number, manual: boolean) {
@@ -485,10 +592,10 @@ defineExpose({
 })
 
 watch(
-  () => props.audioUrl,
+  () => [props.audioUrl, props.nativeDesktopFileId ?? 0] as const,
   () => {
     manualZoomForFile = false
-    mountWs()
+    void mountWs()
   },
   { immediate: true },
 )

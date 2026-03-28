@@ -8,7 +8,7 @@ import (
 )
 
 // configureSQLite sets pragmas and pool limits for SQLite.
-// Without busy_timeout / WAL, restarts and concurrent HTTP handlers can hit SQLITE_BUSY (5) easily.
+// Without busy_timeout (and a single pooled connection), concurrent handlers can hit SQLITE_BUSY (5) easily.
 func configureSQLite(d *sql.DB) error {
 	// Single connection avoids writer lock contention across pooled connections.
 	d.SetMaxOpenConns(1)
@@ -18,7 +18,6 @@ func configureSQLite(d *sql.DB) error {
 	stmts := []string{
 		`PRAGMA foreign_keys = ON`,
 		`PRAGMA busy_timeout = 10000`,
-		`PRAGMA journal_mode = WAL`,
 	}
 	for _, s := range stmts {
 		if _, err := d.Exec(s); err != nil {

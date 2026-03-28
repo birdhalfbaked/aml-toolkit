@@ -73,15 +73,11 @@ export function updateSegment(id: number, body: SegmentWriteBody) {
 }
 
 export function deleteSegment(id: number) {
-  return fetch((import.meta.env.VITE_API_BASE ?? '') + `/api/segments/${id}`, { method: 'DELETE' }).then((res) => {
-    if (!res.ok) throw new Error(res.statusText)
-  })
+  return api<void>(`/api/segments/${id}`, { method: 'DELETE' })
 }
 
 export function deleteFile(fileId: number) {
-  return fetch((import.meta.env.VITE_API_BASE ?? '') + `/api/files/${fileId}`, { method: 'DELETE' }).then((res) => {
-    if (!res.ok) throw new Error(res.statusText)
-  })
+  return api<void>(`/api/files/${fileId}`, { method: 'DELETE' })
 }
 
 export function trimSilence(segmentId: number, threshold?: number, windowMs?: number) {

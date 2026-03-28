@@ -96,13 +96,13 @@ func Build(ctx context.Context, rp *repo.Repo, ly *store.Layout, projectID int64
 	idx := 0
 
 	type preparedRow struct {
-		row         repo.SegmentExportRow
-		schema      *fieldschema.FieldSchema
-		segFV       map[string]string
-		fileFV      map[string]string
-		labelName   *string
-		primary     string
-		trPtr       *string
+		row          repo.SegmentExportRow
+		schema       *fieldschema.FieldSchema
+		segFV        map[string]string
+		fileFV       map[string]string
+		labelName    *string
+		primary      string
+		trPtr        *string
 		mergedFields map[string]string
 	}
 
@@ -375,6 +375,25 @@ func sanitize(s string) string {
 		return "label"
 	}
 	return string(b)
+}
+
+// ExportZipToPath writes a zip of root to destPath. On failure, destPath is removed if it was created.
+func ExportZipToPath(root, destPath string) error {
+	f, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := ZipDir(root, f); err != nil {
+		_ = f.Close()
+		_ = os.Remove(destPath)
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = os.Remove(destPath)
+		return err
+	}
+	return nil
 }
 
 // ZipDir streams a zip of dataset root to w.

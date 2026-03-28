@@ -1,6 +1,41 @@
+import { isWailsDesktop, wailsApiDispatch } from '@/lib/desktopWails'
+
 const apiBase = import.meta.env.VITE_API_BASE ?? ''
 
+function headerContentType(init?: RequestInit): string {
+  if (!init?.headers) return ''
+  const h = init.headers
+  if (typeof (h as Headers).get === 'function') {
+    return (h as Headers).get('Content-Type') ?? ''
+  }
+  const rec = h as Record<string, string>
+  return rec['Content-Type'] ?? rec['content-type'] ?? ''
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  if (isWailsDesktop()) {
+    const method = (init?.method ?? 'GET').toUpperCase()
+    const bodyStr = typeof init?.body === 'string' ? init.body : ''
+    let ct = headerContentType(init)
+    if (!ct && bodyStr && method !== 'GET' && method !== 'HEAD' && method !== 'DELETE') {
+      ct = 'application/json'
+    }
+    const { status, body } = await wailsApiDispatch(method, path, ct, bodyStr || undefined)
+    const text = new TextDecoder().decode(body ?? new Uint8Array())
+    if (status < 200 || status >= 300) {
+      let msg = text
+      try {
+        const j = JSON.parse(text) as { error?: string }
+        if (j.error) msg = j.error
+      } catch {
+        /* ignore */
+      }
+      throw new Error(msg || `HTTP ${status}`)
+    }
+    if (!text) return undefined as T
+    return JSON.parse(text) as T
+  }
+
   const res = await fetch(apiBase + path, {
     ...init,
     headers: {
@@ -24,6 +59,16 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function apiBlob(path: string): Promise<Blob> {
+  if (isWailsDesktop()) {
+    return wailsApiDispatch('GET', path, '', undefined).then(({ status, contentType, body }) => {
+      const raw = body ?? new Uint8Array()
+      if (status < 200 || status >= 300) {
+        const text = new TextDecoder().decode(raw)
+        throw new Error(text || `HTTP ${status}`)
+      }
+      return new Blob([new Uint8Array(raw)], { type: contentType || undefined })
+    })
+  }
   return fetch(apiBase + path).then((res) => {
     if (!res.ok) throw new Error(res.statusText)
     return res.blob()

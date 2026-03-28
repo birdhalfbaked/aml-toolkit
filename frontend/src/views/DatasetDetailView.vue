@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import * as datasetsApi from '@/api/datasets'
+import { desktopExportDatasetZip, isWailsDesktop } from '@/lib/desktopWails'
 import ProjectBreadcrumbs from '@/components/ProjectBreadcrumbs.vue'
 import type { DatasetSample } from '@/types'
 import { errorMessage } from '@/utils/error'
@@ -12,16 +13,51 @@ const datasetId = computed(() => Number(route.params.datasetId))
 
 const samples = ref<DatasetSample[]>([])
 const err = ref<string | null>(null)
+const exportNote = ref<string | null>(null)
+const exporting = ref(false)
 const selected = ref<DatasetSample | null>(null)
 const playing = ref(false)
-const audioUrl = computed(() =>
-  selected.value ? datasetsApi.sampleAudioUrl(datasetId.value, selected.value.id) : '',
-)
+/** HTTP(s) URL in browser; blob: URL on Wails from ApiDispatch. */
+const playbackSrc = ref('')
+let desktopSampleObjectUrl: string | null = null
+let sampleAudioReqGen = 0
+
+function revokeDesktopSampleUrl() {
+  if (desktopSampleObjectUrl) {
+    URL.revokeObjectURL(desktopSampleObjectUrl)
+    desktopSampleObjectUrl = null
+  }
+}
+
+async function syncSamplePlaybackSrc() {
+  const gen = ++sampleAudioReqGen
+  revokeDesktopSampleUrl()
+  const sel = selected.value
+  if (!sel) {
+    playbackSrc.value = ''
+    return
+  }
+  if (isWailsDesktop()) {
+    playbackSrc.value = ''
+    try {
+      const blob = await datasetsApi.downloadDatasetSampleAudio(datasetId.value, sel.id)
+      if (gen !== sampleAudioReqGen) return
+      desktopSampleObjectUrl = URL.createObjectURL(blob)
+      playbackSrc.value = desktopSampleObjectUrl
+    } catch (e) {
+      if (gen !== sampleAudioReqGen) return
+      err.value = errorMessage(e)
+      playbackSrc.value = ''
+    }
+  } else {
+    playbackSrc.value = datasetsApi.sampleAudioUrl(datasetId.value, sel.id)
+  }
+}
 
 async function load() {
   err.value = null
   try {
-    samples.value = await datasetsApi.listSamples(datasetId.value)
+    samples.value = (await datasetsApi.listSamples(datasetId.value)) ?? []
   } catch (e) {
     err.value = errorMessage(e)
   }
@@ -31,11 +67,17 @@ onMounted(load)
 
 watch([projectId, datasetId], () => {
   selected.value = null
+  exportNote.value = null
   load()
 })
 
 watch(selected, () => {
   playing.value = false
+  void syncSamplePlaybackSrc()
+})
+
+onUnmounted(() => {
+  revokeDesktopSampleUrl()
 })
 
 function onPlay() {
@@ -48,7 +90,22 @@ function onEnded() {
   playing.value = false
 }
 
-async function downloadZip() {
+async function exportZip() {
+  err.value = null
+  exportNote.value = null
+  if (isWailsDesktop()) {
+    exporting.value = true
+    try {
+      const saved = await desktopExportDatasetZip(datasetId.value)
+      if (!saved) return
+      exportNote.value = `Exported to ${saved}`
+    } catch (e) {
+      err.value = errorMessage(e)
+    } finally {
+      exporting.value = false
+    }
+    return
+  }
   try {
     const blob = await datasetsApi.downloadDatasetZip(datasetId.value)
     const u = URL.createObjectURL(blob)
@@ -101,9 +158,17 @@ const filtered = computed(() => {
     <div class="d-flex align-center mb-4">
       <h1 class="text-h5">Dataset #{{ datasetId }}</h1>
       <v-spacer />
-      <v-btn color="primary" variant="tonal" @click="downloadZip">Download ZIP</v-btn>
+      <v-btn
+        color="primary"
+        variant="tonal"
+        :loading="exporting"
+        @click="exportZip"
+      >
+        {{ isWailsDesktop() ? 'Export ZIP…' : 'Download ZIP' }}
+      </v-btn>
     </div>
     <v-alert v-if="err" type="error" class="mb-4">{{ err }}</v-alert>
+    <v-alert v-else-if="exportNote" type="success" variant="tonal" class="mb-4">{{ exportNote }}</v-alert>
 
     <v-select
       v-model="filterSplit"
@@ -154,10 +219,10 @@ const filtered = computed(() => {
       <v-col cols="12" md="5">
         <v-card v-if="selected" :class="{ 'border-active': playing }" variant="outlined" class="pa-4">
           <audio
-            :key="audioUrl"
+            :key="`${datasetId}-${selected.id}`"
             controls
             class="w-100 mb-4"
-            :src="audioUrl"
+            :src="playbackSrc"
             @play="onPlay"
             @pause="onPause"
             @ended="onEnded"

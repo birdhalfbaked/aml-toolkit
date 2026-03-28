@@ -4,12 +4,15 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"com.birdhalfbaked.aml-toolkit/internal/audio"
 	"com.birdhalfbaked.aml-toolkit/internal/dataset"
@@ -19,45 +22,84 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"com.birdhalfbaked.aml-toolkit/internal/desktop"
 	"com.birdhalfbaked.aml-toolkit/internal/fieldschema"
 )
 
+// Server implements HTTP API and [audioout.LayoutAccessor].
 type Server struct {
-	Repo   *repo.Repo
-	Layout *store.Layout
+	Repo        *repo.Repo
+	layout      atomic.Value // *store.Layout
+	apiUnlocked atomic.Bool
+}
+
+// NewServer wires the API with an unlocked handler (default for CLI and tests).
+func NewServer(rp *repo.Repo, layout *store.Layout) *Server {
+	s := &Server{Repo: rp}
+	s.layout.Store(layout)
+	s.apiUnlocked.Store(true)
+	return s
+}
+
+// CurrentLayout returns the active on-disk library root (may change after desktop onboarding).
+func (s *Server) CurrentLayout() *store.Layout {
+	return s.layout.Load().(*store.Layout)
+}
+
+// SetLayout switches the library root (desktop welcome flow).
+func (s *Server) SetLayout(l *store.Layout) {
+	s.layout.Store(l)
+}
+
+// SetAPIUnlocked controls whether non-bootstrap /api routes are served (desktop onboarding gate).
+func (s *Server) SetAPIUnlocked(on bool) {
+	s.apiUnlocked.Store(on)
+}
+
+func (s *Server) gateAPI(next httprouter.Handle) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		if desktop.IsDesktopBuild() && !s.apiUnlocked.Load() {
+			WriteError(w, 428, "Choose a library folder on the welcome screen before using the app.")
+			return
+		}
+		next(w, r, ps)
+	}
 }
 
 func (s *Server) Register(r *httprouter.Router) {
-	r.GET("/api/projects", s.cors(s.handleListProjects))
-	r.POST("/api/projects", s.cors(s.handleCreateProject))
-	r.GET("/api/projects/:id", s.cors(s.handleGetProject))
-	r.GET("/api/projects/:id/collections", s.cors(s.handleListCollections))
-	r.POST("/api/projects/:id/collections", s.cors(s.handleCreateCollection))
-	r.GET("/api/collections/:id", s.cors(s.handleGetCollection))
-	r.PATCH("/api/collections/:id", s.cors(s.handlePatchCollection))
-	r.GET("/api/projects/:id/labels", s.cors(s.handleListLabels))
-	r.POST("/api/projects/:id/labels", s.cors(s.handleCreateLabel))
-	r.POST("/api/projects/:id/datasets", s.cors(s.handleCreateDataset))
-	r.GET("/api/projects/:id/datasets", s.cors(s.handleListDatasets))
+	r.GET("/api/bootstrap/status", s.cors(s.handleBootstrapStatus))
+	r.POST("/api/bootstrap/complete", s.cors(s.handleBootstrapComplete))
 
-	r.POST("/api/collections/:id/upload", s.cors(s.handleUpload))
-	r.GET("/api/collections/:id/files", s.cors(s.handleListFiles))
-	r.GET("/api/collections/:id/labeling-queue", s.cors(s.handleLabelingQueue))
+	r.GET("/api/projects", s.cors(s.gateAPI(s.handleListProjects)))
+	r.POST("/api/projects", s.cors(s.gateAPI(s.handleCreateProject)))
+	r.GET("/api/projects/:id", s.cors(s.gateAPI(s.handleGetProject)))
+	r.GET("/api/projects/:id/collections", s.cors(s.gateAPI(s.handleListCollections)))
+	r.POST("/api/projects/:id/collections", s.cors(s.gateAPI(s.handleCreateCollection)))
+	r.GET("/api/collections/:id", s.cors(s.gateAPI(s.handleGetCollection)))
+	r.PATCH("/api/collections/:id", s.cors(s.gateAPI(s.handlePatchCollection)))
+	r.GET("/api/projects/:id/labels", s.cors(s.gateAPI(s.handleListLabels)))
+	r.POST("/api/projects/:id/labels", s.cors(s.gateAPI(s.handleCreateLabel)))
+	r.POST("/api/projects/:id/datasets", s.cors(s.gateAPI(s.handleCreateDataset)))
+	r.GET("/api/projects/:id/datasets", s.cors(s.gateAPI(s.handleListDatasets)))
 
-	r.GET("/api/files/:id/audio", s.cors(s.handleAudioFile))
-	r.GET("/api/files/:id/segments", s.cors(s.handleListSegments))
-	r.POST("/api/files/:id/segments", s.cors(s.handleCreateSegment))
-	r.GET("/api/files/:id", s.cors(s.handleGetAudioFileRecord))
-	r.PATCH("/api/files/:id", s.cors(s.handlePatchAudioFileRecord))
-	r.DELETE("/api/files/:id", s.cors(s.handleDeleteAudioFile))
-	r.PATCH("/api/segments/:id", s.cors(s.handleUpdateSegment))
-	r.DELETE("/api/segments/:id", s.cors(s.handleDeleteSegment))
-	r.POST("/api/segments/:id/trim-silence", s.cors(s.handleTrimSilence))
+	r.POST("/api/collections/:id/upload", s.cors(s.gateAPI(s.handleUpload)))
+	r.GET("/api/collections/:id/files", s.cors(s.gateAPI(s.handleListFiles)))
+	r.GET("/api/collections/:id/labeling-queue", s.cors(s.gateAPI(s.handleLabelingQueue)))
 
-	r.GET("/api/datasets/:id", s.cors(s.handleGetDataset))
-	r.GET("/api/datasets/:id/samples", s.cors(s.handleListDatasetSamples))
-	r.GET("/api/datasets/:id/samples/:sampleId/audio", s.cors(s.handleDatasetSampleAudio))
-	r.GET("/api/datasets/:id/download", s.cors(s.handleDatasetDownload))
+	r.GET("/api/files/:id/audio", s.cors(s.gateAPI(s.handleAudioFile)))
+	r.GET("/api/files/:id/segments", s.cors(s.gateAPI(s.handleListSegments)))
+	r.POST("/api/files/:id/segments", s.cors(s.gateAPI(s.handleCreateSegment)))
+	r.GET("/api/files/:id", s.cors(s.gateAPI(s.handleGetAudioFileRecord)))
+	r.PATCH("/api/files/:id", s.cors(s.gateAPI(s.handlePatchAudioFileRecord)))
+	r.DELETE("/api/files/:id", s.cors(s.gateAPI(s.handleDeleteAudioFile)))
+	r.PATCH("/api/segments/:id", s.cors(s.gateAPI(s.handleUpdateSegment)))
+	r.DELETE("/api/segments/:id", s.cors(s.gateAPI(s.handleDeleteSegment)))
+	r.POST("/api/segments/:id/trim-silence", s.cors(s.gateAPI(s.handleTrimSilence)))
+
+	r.GET("/api/datasets/:id", s.cors(s.gateAPI(s.handleGetDataset)))
+	r.GET("/api/datasets/:id/samples", s.cors(s.gateAPI(s.handleListDatasetSamples)))
+	r.GET("/api/datasets/:id/samples/:sampleId/audio", s.cors(s.gateAPI(s.handleDatasetSampleAudio)))
+	r.GET("/api/datasets/:id/download", s.cors(s.gateAPI(s.handleDatasetDownload)))
 }
 
 func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -109,7 +151,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request, _ h
 		WriteError(w, 500, err.Error())
 		return
 	}
-	_ = s.Layout.EnsureProjectDir(p.ID)
+	_ = s.CurrentLayout().EnsureProjectDir(p.ID)
 	WriteJSON(w, 201, p)
 }
 
@@ -145,7 +187,7 @@ func (s *Server) handleCreateCollection(w http.ResponseWriter, r *http.Request, 
 		WriteError(w, 500, err.Error())
 		return
 	}
-	if err := s.Layout.EnsureCollectionDir(pid, c.ID); err != nil {
+	if err := s.CurrentLayout().EnsureCollectionDir(pid, c.ID); err != nil {
 		WriteError(w, 500, err.Error())
 		return
 	}
@@ -281,7 +323,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request, ps httprou
 			}
 			added, err := s.extractZip(r.Context(), col, data)
 			if err != nil {
-				WriteError(w, 400, err.Error())
+				WriteError(w, 400, zipUploadFriendlyError(data, err).Error())
 				return
 			}
 			out = append(out, added...)
@@ -289,7 +331,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request, ps httprou
 		}
 		if strings.HasSuffix(lower, ".wav") || strings.HasSuffix(lower, ".mp3") {
 			stored, format := safeName(name), formatFromExt(lower)
-			dest := filepath.Join(s.Layout.CollectionDir(col.ProjectID, col.ID), stored)
+			dest := filepath.Join(s.CurrentLayout().CollectionDir(col.ProjectID, col.ID), stored)
 			if err := saveUploadToFile(f, dest); err != nil {
 				_ = f.Close()
 				WriteError(w, 500, err.Error())
@@ -372,7 +414,7 @@ func (s *Server) extractZip(ctx context.Context, col *models.Collection, data []
 		if err != nil {
 			continue
 		}
-		dest := filepath.Join(s.Layout.CollectionDir(col.ProjectID, col.ID), stored)
+		dest := filepath.Join(s.CurrentLayout().CollectionDir(col.ProjectID, col.ID), stored)
 		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 			_ = rc.Close()
 			return nil, err
@@ -399,6 +441,89 @@ func (s *Server) extractZip(ctx context.Context, col *models.Collection, data []
 		out = append(out, *a)
 	}
 	return out, nil
+}
+
+// zipUploadFriendlyError maps low-level zip errors to clearer messages when the body is empty
+// or not a zip (common with WebView2 multipart uploads through Wails AssetServer).
+func zipUploadFriendlyError(data []byte, err error) error {
+	if err == nil {
+		return nil
+	}
+	if len(data) == 0 {
+		log.Printf("handlers: zip upload empty body (often WebView2 / Wails AssetServer multipart limitation)")
+		return fmt.Errorf("upload body was empty. In the desktop app, drag-and-drop uploads are unreliable; use \"Import from disk…\" below the drop zone")
+	}
+	if len(data) < 4 || data[0] != 'P' || data[1] != 'K' {
+		log.Printf("handlers: zip upload missing PK magic len=%d", len(data))
+		return fmt.Errorf("upload does not look like a valid zip. In the desktop app, use \"Import from disk…\" instead of drag-and-drop")
+	}
+	return err
+}
+
+// ImportFilesFromPaths imports the same formats as HTTP upload: .zip (flattened WAVs) and loose .wav/.mp3.
+// Paths come from the OS file dialog (Wails desktop); not used for web multipart uploads.
+func (s *Server) ImportFilesFromPaths(ctx context.Context, collectionID int64, paths []string) ([]models.AudioFile, error) {
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	col, err := s.Repo.GetCollection(ctx, collectionID)
+	if err != nil || col == nil {
+		return nil, fmt.Errorf("collection not found")
+	}
+	var out []models.AudioFile
+	for _, p := range paths {
+		p = filepath.Clean(p)
+		lower := strings.ToLower(p)
+		switch {
+		case strings.HasSuffix(lower, ".zip"):
+			data, err := os.ReadFile(p)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", filepath.Base(p), err)
+			}
+			if len(data) < 4 || data[0] != 'P' || data[1] != 'K' {
+				return nil, fmt.Errorf("%s: not a valid zip file", filepath.Base(p))
+			}
+			added, err := s.extractZip(ctx, col, data)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", filepath.Base(p), err)
+			}
+			out = append(out, added...)
+		case strings.HasSuffix(lower, ".wav") || strings.HasSuffix(lower, ".mp3"):
+			a, err := s.importLooseAudioFromPath(ctx, col, p)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", filepath.Base(p), err)
+			}
+			out = append(out, *a)
+		default:
+			return nil, fmt.Errorf("%s: unsupported type (use .zip, .wav, or .mp3)", filepath.Base(p))
+		}
+	}
+	return out, nil
+}
+
+func (s *Server) importLooseAudioFromPath(ctx context.Context, col *models.Collection, srcPath string) (*models.AudioFile, error) {
+	name := filepath.Base(srcPath)
+	lower := strings.ToLower(name)
+	if !strings.HasSuffix(lower, ".wav") && !strings.HasSuffix(lower, ".mp3") {
+		return nil, fmt.Errorf("unsupported format")
+	}
+	f, err := os.Open(srcPath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	stored, format := safeName(name), formatFromExt(lower)
+	dest := filepath.Join(s.CurrentLayout().CollectionDir(col.ProjectID, col.ID), stored)
+	if err := saveUploadToFile(f, dest); err != nil {
+		return nil, err
+	}
+	var dur *int64
+	if format == "wav" {
+		if d, err := wavDuration(dest); err == nil {
+			dur = &d
+		}
+	}
+	return s.Repo.InsertAudioFile(ctx, col.ID, stored, name, format, dur)
 }
 
 type bytesReaderAt struct {
@@ -550,7 +675,7 @@ func (s *Server) handleAudioFile(w http.ResponseWriter, r *http.Request, ps http
 		WriteError(w, 404, "not found")
 		return
 	}
-	path := filepath.Join(s.Layout.CollectionDir(col.ProjectID, col.ID), a.StoredFilename)
+	path := filepath.Join(s.CurrentLayout().CollectionDir(col.ProjectID, col.ID), a.StoredFilename)
 	f, err := os.Open(path)
 	if err != nil {
 		WriteError(w, 404, "file missing")
@@ -564,6 +689,29 @@ func (s *Server) handleAudioFile(w http.ResponseWriter, r *http.Request, ps http
 	}
 	w.Header().Set("Accept-Ranges", "bytes")
 	_, _ = io.Copy(w, f)
+}
+
+// ReadAudioFileBytes loads the stored audio file into memory (for desktop waveform decode when WebView HTTP is unreliable).
+func (s *Server) ReadAudioFileBytes(ctx context.Context, id int64) (data []byte, contentType string, err error) {
+	a, err := s.Repo.GetAudioFile(ctx, id)
+	if err != nil || a == nil {
+		return nil, "", fmt.Errorf("not found")
+	}
+	col, err := s.Repo.GetCollection(ctx, a.CollectionID)
+	if err != nil || col == nil {
+		return nil, "", fmt.Errorf("not found")
+	}
+	path := filepath.Join(s.CurrentLayout().CollectionDir(col.ProjectID, col.ID), a.StoredFilename)
+	data, err = os.ReadFile(path)
+	if err != nil {
+		return nil, "", err
+	}
+	if a.Format == "mp3" {
+		contentType = "audio/mpeg"
+	} else {
+		contentType = "audio/wav"
+	}
+	return data, contentType, nil
 }
 
 func (s *Server) handleDeleteAudioFile(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -582,7 +730,7 @@ func (s *Server) handleDeleteAudioFile(w http.ResponseWriter, r *http.Request, p
 		WriteError(w, 404, "collection not found")
 		return
 	}
-	p := filepath.Join(s.Layout.CollectionDir(col.ProjectID, col.ID), a.StoredFilename)
+	p := filepath.Join(s.CurrentLayout().CollectionDir(col.ProjectID, col.ID), a.StoredFilename)
 	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
 		WriteError(w, 500, err.Error())
 		return
@@ -737,7 +885,7 @@ func (s *Server) handleTrimSilence(w http.ResponseWriter, r *http.Request, ps ht
 		WriteError(w, 404, "collection not found")
 		return
 	}
-	src := filepath.Join(s.Layout.CollectionDir(col.ProjectID, col.ID), a.StoredFilename)
+	src := filepath.Join(s.CurrentLayout().CollectionDir(col.ProjectID, col.ID), a.StoredFilename)
 	ns, ne, err := audio.TrimSilenceEdges(src, body.Threshold, body.WindowMs)
 	if err != nil {
 		WriteError(w, 400, err.Error())
@@ -788,7 +936,7 @@ func (s *Server) handleCreateDataset(w http.ResponseWriter, r *http.Request, ps 
 		WriteError(w, 400, "no labeled segments to export")
 		return
 	}
-	ds, err := dataset.Build(r.Context(), s.Repo, s.Layout, pid, req, rows)
+	ds, err := dataset.Build(r.Context(), s.Repo, s.CurrentLayout(), pid, req, rows)
 	if err != nil {
 		WriteError(w, 400, err.Error())
 		return
@@ -892,4 +1040,55 @@ func (s *Server) handleDatasetDownload(w http.ResponseWriter, r *http.Request, p
 		WriteError(w, 500, err.Error())
 		return
 	}
+}
+
+func (s *Server) handleBootstrapStatus(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	st, err := desktop.StateDir()
+	if err != nil {
+		WriteError(w, 500, err.Error())
+		return
+	}
+	dbPath := desktop.ResolveDBPath(st)
+	payload, err := desktop.BootstrapStatusJSON(dbPath, s.CurrentLayout().Root, !s.apiUnlocked.Load())
+	if err != nil {
+		WriteError(w, 500, err.Error())
+		return
+	}
+	WriteJSON(w, 200, payload)
+}
+
+func (s *Server) handleBootstrapComplete(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if !desktop.IsDesktopBuild() {
+		WriteError(w, 404, "not available")
+		return
+	}
+	var body struct {
+		LibraryRoot string `json:"libraryRoot"`
+	}
+	if err := ReadJSON(r, &body); err != nil {
+		WriteError(w, 400, "invalid json")
+		return
+	}
+	root := strings.TrimSpace(body.LibraryRoot)
+	if root == "" {
+		WriteError(w, 400, "libraryRoot required")
+		return
+	}
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		WriteError(w, 400, err.Error())
+		return
+	}
+	lay, err := store.NewLayout(abs)
+	if err != nil {
+		WriteError(w, 400, err.Error())
+		return
+	}
+	s.SetLayout(lay)
+	if err := desktop.WriteConfig(desktop.ConfigFile{LibraryRoot: abs, OnboardingComplete: true}); err != nil {
+		WriteError(w, 500, err.Error())
+		return
+	}
+	s.SetAPIUnlocked(true)
+	WriteJSON(w, 200, map[string]string{"ok": "true"})
 }

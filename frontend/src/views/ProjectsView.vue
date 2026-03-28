@@ -15,7 +15,7 @@ async function load() {
   loading.value = true
   err.value = null
   try {
-    projects.value = await projectsApi.listProjects()
+    projects.value = (await projectsApi.listProjects()) ?? []
   } catch (e) {
     err.value = errorMessage(e)
   } finally {
@@ -28,6 +28,9 @@ async function create() {
   err.value = null
   try {
     const p = await projectsApi.createProject(name.value.trim())
+    if (p == null || p.id == null) {
+      throw new Error('Server returned no project (empty API body). Try rebuilding the desktop app.')
+    }
     name.value = ''
     await load()
     router.push({ name: 'project', params: { projectId: String(p.id) } })

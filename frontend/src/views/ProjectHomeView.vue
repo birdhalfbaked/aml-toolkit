@@ -31,7 +31,7 @@ async function load() {
   err.value = null
   try {
     project.value = await projectsApi.getProject(projectId.value)
-    collections.value = await projectsApi.listCollections(projectId.value)
+    collections.value = (await projectsApi.listCollections(projectId.value)) ?? []
   } catch (e) {
     err.value = errorMessage(e)
   } finally {

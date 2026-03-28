@@ -10,9 +10,17 @@ export function listSamples(datasetId: number, split?: string) {
   return api<DatasetSample[]>(`/api/datasets/${datasetId}/samples${q}`)
 }
 
+export function datasetSampleAudioPath(datasetId: number, sampleId: number) {
+  return `/api/datasets/${datasetId}/samples/${sampleId}/audio`
+}
+
 export function sampleAudioUrl(datasetId: number, sampleId: number) {
   const base = import.meta.env.VITE_API_BASE ?? ''
-  return `${base}/api/datasets/${datasetId}/samples/${sampleId}/audio`
+  return `${base}${datasetSampleAudioPath(datasetId, sampleId)}`
+}
+
+export function downloadDatasetSampleAudio(datasetId: number, sampleId: number) {
+  return apiBlob(datasetSampleAudioPath(datasetId, sampleId))
 }
 
 export function downloadDatasetZip(datasetId: number) {

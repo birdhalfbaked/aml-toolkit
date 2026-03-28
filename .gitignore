@@ -3,3 +3,5 @@
 *.out
 *.db-wal
 *.db-shm
+backend/cmd/wails/build/
+backend/internal/uistatic/dist/

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"strconv"
 
 	"github.com/julienschmidt/httprouter"
@@ -12,7 +13,21 @@ func WriteJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	if v == nil {
+		_, _ = w.Write([]byte("null\n"))
 		return
+	}
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Slice:
+		if rv.IsNil() {
+			_, _ = w.Write([]byte("[]\n"))
+			return
+		}
+	case reflect.Map:
+		if rv.IsNil() {
+			_, _ = w.Write([]byte("{}\n"))
+			return
+		}
 	}
 	_ = json.NewEncoder(w).Encode(v)
 }

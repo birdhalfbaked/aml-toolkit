@@ -15,6 +15,12 @@ import {
   parseFieldSchemaJson,
   segmentFormComplete,
 } from '@/types'
+import {
+  canUseDesktopNativeAudio,
+  desktopImportFromPaths,
+  desktopPickAndImportFiles,
+  subscribeWailsFileDrop,
+} from '@/lib/desktopWails'
 import { errorMessage } from '@/utils/error'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -123,8 +129,8 @@ async function loadFiles() {
   err.value = null
   try {
     collection.value = await projectsApi.getCollection(collectionId.value)
-    files.value = await audioApi.listFiles(collectionId.value)
-    labels.value = await projectsApi.listLabels(projectId.value)
+    files.value = (await audioApi.listFiles(collectionId.value)) ?? []
+    labels.value = (await projectsApi.listLabels(projectId.value)) ?? []
     await loadQueue()
     if (!selectedFileId.value && files.value.length) {
       const n = nextFileId(null, files.value)
@@ -140,7 +146,7 @@ async function loadSegments() {
     segments.value = []
     return
   }
-  segments.value = await audioApi.listSegments(selectedFileId.value)
+  segments.value = (await audioApi.listSegments(selectedFileId.value)) ?? []
   if (!fieldDirty.value) syncFieldValuesFromSelected()
 }
 
@@ -283,6 +289,29 @@ async function onDrop(filesList: File[]) {
   }
 }
 
+async function runDesktopImport(importFn: () => Promise<AudioFile[]>) {
+  err.value = null
+  try {
+    uploadPhase.value = 'processing'
+    const added = await importFn()
+    uploadPhase.value = 'idle'
+    if (added.length) await loadFiles()
+  } catch (e) {
+    uploadPhase.value = 'idle'
+    err.value = errorMessage(e)
+  }
+}
+
+async function onDesktopImportFromDisk() {
+  await runDesktopImport(() => desktopPickAndImportFiles(collectionId.value))
+}
+
+async function onDesktopImportFromPaths(paths: string[]) {
+  await runDesktopImport(() => desktopImportFromPaths(collectionId.value, paths))
+}
+
+let offWailsFileDrop: (() => void) | undefined
+
 function selectFile(id: number) {
   selectedFileId.value = id
   selectedSegId.value = null
@@ -328,7 +357,7 @@ async function saveSegmentMeta() {
       const existing = labels.value.find((l) => l.name === name)
       if (!existing) {
         await projectsApi.createLabel(projectId.value, name)
-        labels.value = await projectsApi.listLabels(projectId.value)
+        labels.value = (await projectsApi.listLabels(projectId.value)) ?? []
       }
       if (primaryTax && t.id === primaryTax.id) {
         const now = labels.value.find((l) => l.name === name)
@@ -470,10 +499,14 @@ function onGlobalKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
+  offWailsFileDrop = subscribeWailsFileDrop((paths) => {
+    void onDesktopImportFromPaths(paths)
+  })
   window.addEventListener('keydown', onGlobalKeydown)
 })
 
 onUnmounted(() => {
+  offWailsFileDrop?.()
   window.removeEventListener('keydown', onGlobalKeydown)
 })
 </script>
@@ -568,7 +601,11 @@ onUnmounted(() => {
             rounded
           />
         </v-sheet>
-        <AudioDropZone @files="onDrop" />
+        <AudioDropZone
+          :desktop-import-only="canUseDesktopNativeAudio()"
+          @files="onDrop"
+          @pick-native="onDesktopImportFromDisk"
+        />
         <v-list v-if="files.length" class="mt-4" density="compact" border rounded>
           <v-list-item
             v-for="f in files"
@@ -605,6 +642,7 @@ onUnmounted(() => {
           <WaveformEditor
             ref="waveRef"
             :audio-url="audioSrc"
+            :native-desktop-file-id="selectedFileId"
             :segments="segments"
             :draft-segment="draftSegment"
             :selected-segment-id="selectedSegId"

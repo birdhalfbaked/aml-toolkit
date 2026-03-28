@@ -53,16 +53,33 @@
       <section id="distribution" class="doc-standalone-note" aria-label="Standalone builds and expectations">
         <h2>Standalone builds</h2>
         <p>
-          Right now you run the app from a developer checkout: clone the repo, run migrations yourself, keep Go and Yarn
-          installed, and juggle two terminals for the API and the Vite dev server. That is not a polished or ideal
-          experience - it is fine for contributors and people who are comfortable with those tools, but it is not where
-          I want to stop.
+          <strong>Browser workflow</strong> still assumes a developer checkout: clone the repo, run migrations, keep Go
+          and Yarn installed, and run the API plus the Vite dev server in two terminals (see Get started below).
         </p>
         <p>
-          If this project proves useful and there is interest, I expect to improve how you run it: for example prebuilt
-          binaries, a packaged desktop app, a single container image, or an installer that does not assume a full dev
-          toolchain. There is no timeline or guarantee; this note only sets expectations that the current setup is
-          acknowledged as rough and that better packaging is a likely direction when it is worth doing.
+          <strong>Desktop (Wails) developer mode:</strong> install the
+          <a href="https://wails.io/docs/gettingstarted/installation">Wails v2 CLI</a> (for example
+          <code>go install github.com/wailsapp/wails/v2/cmd/wails@latest</code> and put
+          <code>$(go env GOPATH)/bin</code> on your <code>PATH</code>). From <code>backend/cmd/wails</code>,
+          <code>wails dev</code> opens the native window with hot reload, and <code>wails build</code> compiles a release
+          binary under <code>build/bin/</code>. Use the same Node/Yarn and platform prerequisites as in the Wails install
+          guide (WebView2 on Windows, Xcode command line tools on macOS, GTK/WebKit dev packages on Linux).
+        </p>
+        <p>
+          <strong>Prebuilt desktop binaries (GitHub Actions):</strong> every push to <code>main</code> and every pull
+          request runs a workflow that builds the Wails app for
+          <strong>Windows 64-bit</strong> (Windows 10/11),
+          <strong>macOS</strong> (universal Intel + Apple Silicon),
+          and <strong>Linux</strong> (amd64 and arm64). In this repository, open
+          <a href="https://github.com/birdhalfbaked/aml-toolkit/actions/workflows/desktop-build.yml">Desktop build</a>,
+          select a run, and download the artifact named for your platform. Artifacts are zips of the
+          <code>build/bin</code> output (<code>.exe</code>, <code>.app</code> bundle, or Linux binary). The Linux arm64
+          build uses GitHub&rsquo;s arm-hosted runner, which may require a public repository on the free plan; otherwise
+          build <code>linux/arm64</code> locally on suitable hardware.
+        </p>
+        <p>
+          Easier packaging (installers, signed macOS builds, containers) may still follow if there is interest; there is no
+          fixed timeline.
         </p>
       </section>
 
@@ -78,6 +95,11 @@
           <li>Go 1.22+ (see <code>backend/go.mod</code>)</li>
           <li>Node.js 20+ (LTS recommended) and Yarn 1.x - the frontend uses Yarn, not npm</li>
           <li>Git to clone the repository</li>
+          <li>
+            Optional - native desktop shell: Wails v2 CLI and the extras from the
+            <a href="https://wails.io/docs/gettingstarted/installation">Wails installation</a> page (not required for
+            browser-only development)
+          </li>
         </ul>
         <p>
           Clone the repo and work from the project root (paths below assume that). Example:

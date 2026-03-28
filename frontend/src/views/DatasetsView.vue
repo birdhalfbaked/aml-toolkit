@@ -16,7 +16,7 @@ const err = ref<string | null>(null)
 async function load() {
   err.value = null
   try {
-    datasets.value = await projectsApi.listDatasets(projectId.value)
+    datasets.value = (await projectsApi.listDatasets(projectId.value)) ?? []
   } catch (e) {
     err.value = errorMessage(e)
   }

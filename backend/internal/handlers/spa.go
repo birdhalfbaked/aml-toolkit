@@ -26,8 +26,10 @@ func NewSpaHandler(distDir string) http.Handler {
 		clean := path.Clean(p)
 
 		// If the file exists, serve it directly.
-		tryPath := filepath.FromSlash(strings.TrimPrefix(clean, "/"))
-		if tryPath == "." {
+		// http.Dir and http.FileServer require slash-separated paths; on Windows
+		// filepath.FromSlash would use '\' and fs.Open rejects that (see net/http Dir.Open).
+		tryPath := strings.TrimPrefix(clean, "/")
+		if tryPath == "" || tryPath == "." {
 			tryPath = "index.html"
 		}
 		if f, err := fs.Open(tryPath); err == nil {

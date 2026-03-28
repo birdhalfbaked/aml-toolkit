@@ -1,0 +1,23 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "audio-tagger-desktop",
+  "outputfilename": "audio-tagger-desktop",
+  "frontend:dir": "../../../frontend",
+  "frontend:install": "yarn",
+  "frontend:build": "yarn build",
+  "frontend:dev:watcher": "yarn dev",
+  "frontend:dev:serverUrl": "http://localhost:5173",
+  "author": {
+    "name": "Audio ML Toolkit",
+    "email": ""
+  },
+  "info": {
+    "companyName": "",
+    "productName": "Audio Tagger",
+    "productVersion": "1.0.0",
+    "copyright": "",
+    "comments": "Wails desktop shell"
+  },
+  "obfuscated": false,
+  "garbleargs": ""
+}

@@ -12,7 +12,7 @@ export function useLabelingQueue(collectionId: Ref<number>) {
     loading.value = true
     error.value = null
     try {
-      queue.value = await audioApi.labelingQueue(collectionId.value)
+      queue.value = (await audioApi.labelingQueue(collectionId.value)) ?? []
     } catch (e) {
       error.value = errorMessage(e)
     } finally {

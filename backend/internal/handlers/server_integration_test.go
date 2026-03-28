@@ -42,7 +42,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	}
 
 	rp := &repo.Repo{DB: sqldb}
-	srv := &Server{Repo: rp, Layout: layout}
+	srv := NewServer(rp, layout)
 	r := httprouter.New()
 	srv.Register(r)
 
