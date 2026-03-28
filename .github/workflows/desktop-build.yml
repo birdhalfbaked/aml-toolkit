@@ -46,16 +46,16 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: yarn
           cache-dependency-path: frontend/yarn.lock
 
@@ -63,10 +63,16 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          # WebKit/GTK: Wails. libasound2-dev: pkg-config "alsa" for gopxl/beep → ebitengine/oto (CGO).
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libasound2-dev
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+
+      - name: Build frontend assets
+        working-directory: frontend
+        shell: bash
+        run: yarn && yarn build
 
       - name: Build desktop app
         working-directory: backend/cmd/wails
@@ -74,7 +80,7 @@ jobs:
         run: wails build -clean -platform ${{ matrix.platform }} ${{ matrix.wails_extra }}
 
       - name: Upload build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audio-tagger-desktop-${{ matrix.artifact }}
           path: backend/cmd/wails/build/bin/*
