@@ -86,3 +86,4 @@ jobs:
           name: audio-tagger-desktop-${{ matrix.artifact }}
           path: backend/cmd/wails/build/bin/*
           if-no-files-found: error
+          archive: false
