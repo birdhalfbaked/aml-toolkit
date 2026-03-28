@@ -14,7 +14,7 @@ func main() {
 	}
 	defer stack.DB.Close()
 
-	h := httpserver.NewHandler(stack, "")
+	h := httpserver.NewHandler(stack, "", nil)
 	addr := httpserver.ListenAddr()
 	log.Printf("listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, h))

@@ -3,8 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"path/filepath"
-	"runtime"
 
 	"com.birdhalfbaked.aml-toolkit/internal/audioout"
 	"com.birdhalfbaked.aml-toolkit/internal/db"
@@ -16,22 +14,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
-func setFrontendDistDefault() {
-	if os.Getenv("AUDIO_TAGGER_FRONTEND_DIR") != "" {
-		return
-	}
-	_, file, _, ok := runtime.Caller(1)
-	if !ok {
-		return
-	}
-	dir := filepath.Dir(file)
-	dist := filepath.Clean(filepath.Join(dir, "..", "..", "..", "frontend", "dist"))
-	os.Setenv("AUDIO_TAGGER_FRONTEND_DIR", dist)
-}
-
 func main() {
 	_ = os.Setenv("AUDIO_TAGGER_DESKTOP", "1")
-	setFrontendDistDefault()
 
 	dbPath, libraryDir, needOnboarding, err := desktop.PrepareDesktopPaths()
 	if err != nil {
@@ -56,7 +40,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	h := httpserver.NewHandler(stack, os.Getenv("AUDIO_TAGGER_FRONTEND_DIR"))
+	assets := embeddedAssets()
+	h := httpserver.NewHandler(stack, os.Getenv("AUDIO_TAGGER_FRONTEND_DIR"), assets)
 	player := audioout.NewPlayer(stack.Repo, stack.Server)
 	app := NewApp(stack, player, h)
 
@@ -72,7 +57,8 @@ func main() {
 			DisableWebViewDrop: true,
 		},
 		AssetServer: &assetserver.Options{
-			Assets:  nil,
+			// Wails serves GETs from Assets first; misses (e.g. Vue Router paths) go to Handler for SPA fallback + /api.
+			Assets:  assets,
 			Handler: h,
 		},
 		Bind: []interface{}{

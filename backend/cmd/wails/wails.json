@@ -5,6 +5,7 @@
   "frontend:dir": "../../../frontend",
   "frontend:install": "yarn",
   "frontend:build": "yarn build",
+  "build:tags": "embedui",
   "frontend:dev:watcher": "yarn dev",
   "frontend:dev:serverUrl": "http://localhost:5173",
   "author": {

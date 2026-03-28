@@ -15,7 +15,7 @@ func TestApiDispatch_JSON(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = stack.DB.Close() })
 
-	h := httpserver.NewHandler(stack, "")
+	h := httpserver.NewHandler(stack, "", nil)
 	app := NewApp(stack, nil, h)
 
 	out, err := app.ApiDispatch(http.MethodGet, "/api/projects", "", nil)
@@ -40,7 +40,7 @@ func TestApiDispatch_CreateProject_201Body(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = stack.DB.Close() })
 
-	h := httpserver.NewHandler(stack, "")
+	h := httpserver.NewHandler(stack, "", nil)
 	app := NewApp(stack, nil, h)
 
 	payload := []byte(`{"name":"ApiDispatchProj"}`)
@@ -66,7 +66,7 @@ func TestApiDispatch_404(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = stack.DB.Close() })
 
-	h := httpserver.NewHandler(stack, "")
+	h := httpserver.NewHandler(stack, "", nil)
 	app := NewApp(stack, nil, h)
 
 	out, err := app.ApiDispatch(http.MethodGet, "/api/projects/999999", "", nil)

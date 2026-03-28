@@ -3,6 +3,7 @@ package httpserver
 import (
 	"database/sql"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -97,7 +98,10 @@ func OpenStack(cfg Config) (*Stack, error) {
 }
 
 // NewHandler builds the top-level mux: CORS preflight for /api, API + favicon, optional SPA fallback.
-func NewHandler(stack *Stack, frontendDir string) http.Handler {
+// If frontendDir resolves to a directory containing index.html, it is used; otherwise uiEmbedded (e.g. Wails
+// release dist embedded next to main) is used when non-nil and contains index.html. Under Wails, the same
+// fs is usually also passed as assetserver.Options.Assets so static GETs are served by Wails before this handler.
+func NewHandler(stack *Stack, frontendDir string, uiEmbedded fs.FS) http.Handler {
 	dir := frontendDir
 	if dir == "" {
 		dir = os.Getenv("AUDIO_TAGGER_FRONTEND_DIR")
@@ -108,8 +112,16 @@ func NewHandler(stack *Stack, frontendDir string) http.Handler {
 	absFrontendDir, _ := filepath.Abs(dir)
 	var spaHandler http.Handler
 	if st, err := os.Stat(absFrontendDir); err == nil && st.IsDir() {
-		spaHandler = handlers.NewSpaHandler(absFrontendDir)
-		log.Printf("serving frontend from %s", absFrontendDir)
+		if _, err := os.Stat(filepath.Join(absFrontendDir, "index.html")); err == nil {
+			spaHandler = handlers.NewSpaHandler(absFrontendDir)
+			log.Printf("serving frontend from %s", absFrontendDir)
+		}
+	}
+	if spaHandler == nil && uiEmbedded != nil {
+		if _, err := fs.Stat(uiEmbedded, "index.html"); err == nil {
+			spaHandler = handlers.NewSpaHandlerFS(uiEmbedded)
+			log.Printf("serving frontend from embedded static assets")
+		}
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
